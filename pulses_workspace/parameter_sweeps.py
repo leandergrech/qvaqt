@@ -10,6 +10,8 @@ from datetime import datetime
 now = datetime.now
 import matplotlib.pyplot as plt
 
+
+
 def pulsate_gaussian(r=0.1, w=5., dt=0.222, amp=1., beta=2.):
     # # Strength of Rabi=rate in GHz
     # r = 0.1
@@ -40,7 +42,7 @@ def pulsate_gaussian(r=0.1, w=5., dt=0.222, amp=1., beta=2.):
 
     plt.rcParams["font.size"] = 16
 
-    converter =qdp.InstructionToSignals(dt, carriers={"d0": w})
+    # converter =qdp.InstructionToSignals(dt, carriers={"d0": w})
 
     # signals = converter.get_signals(xp)
     # fig, axs = plt.subplots(1, 2, figsize=(14, 4.5))
@@ -68,11 +70,10 @@ def pulsate_gaussian(r=0.1, w=5., dt=0.222, amp=1., beta=2.):
         static_hamiltonian=drift,
         hamiltonian_operators=operators,
         rotating_frame=drift,
-        rwa_cutoff_freq=2*5.,
+        rwa_cutoff_freq=2 * 5.0,
         hamiltonian_channels=['d0'],
         channel_carrier_freqs={'d0': w},
-        dt=dt
-    )
+        dt=dt)
 
     # Start the qubit in its ground state
     y0 = Statevector([1., 0.])

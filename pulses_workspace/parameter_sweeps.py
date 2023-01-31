@@ -107,7 +107,15 @@ def plot_populations(results, ax=None):
 
     return ax
 
+
+
+
 plt.rcParams['font.size'] = 18
+
+beta = 1.0
+save_dir = f'gridsearch_beta[{beta:.1f}]_r[0.05,0.25, 0.05]_w[1,6,1]'
+if not os.path.exists:
+    os.makedirs(save_dir)
 
 for r in np.arange(0.05, 0.26, 0.05):
     fig, axs = plt.subplots(3, 2, figsize=(20, 15))
@@ -115,12 +123,12 @@ for r in np.arange(0.05, 0.26, 0.05):
         print(f'r={r}, w={w}')
         # results = pulsate_gaussian(r=0.1, w=5., amp=1.0)
         start = now()
-        results = pulsate_gaussian(r=r, w=w, amp=1.0)
+        results = pulsate_gaussian(r=r, w=w, amp=1.0, beta=beta)
         end = now()
         print(f'Done in {end - start}')
         ax = plot_populations(results, ax)
         ax.set_title(f'r={r}, w={w}')
 
     fig.tight_layout()
-    fig.savefig(os.path.join('gridsearch_r[0.05,0.25, 0.05]_w[1,6,1]', f'r[{r}]_w[1,6].png'))
+    fig.savefig(os.path.join(save_dir, f'r[{r}]_w[1,6].png'))
     # plt.show()

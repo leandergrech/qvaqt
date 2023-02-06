@@ -31,6 +31,7 @@ class QuPulseEnv(gym.Env):
             qc.add_gate('X', targets=0)
         self.action_eps = 0.001
         self.thresh_r = 0.999
+        self.rew_scale = 10.
 
         self.current_state = None
 
@@ -75,7 +76,7 @@ class QuPulseEnv(gym.Env):
         final_state = np.abs(final_state)
         prob_ket_one = np.diagonal(final_state)[1]
 
-        r = prob_ket_one
+        r = prob_ket_one * self.rew_scale
         # print(r)
         d = r > self.thresh_r
 
@@ -91,18 +92,22 @@ class QuPulseEnv(gym.Env):
             fig.tight_layout()
         plt.show(block=False)
 
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     qc = QubitCircuit(N=1)
     qc.add_gate('X', targets=0)
     env = QuPulseEnv(qc)
+    env.action_eps = 0.001
     o = env.reset()
     rews = []
-    for _ in range(100):
-        otp1, r, d, _ = env.step(env.action_space.sample())
+    for _ in range(10):
+        # a = env.action_space.sample()
+        a = [0, 1, 1]
+        otp1, r, d, _ = env.step(a)
         # env.render()
         rews.append(r)
-    plt.plot(rews)
+    plt.plot(rews, marker='x')
     plt.xlabel('Steps')
     plt.ylabel('Rewards')
     plt.yscale('log')

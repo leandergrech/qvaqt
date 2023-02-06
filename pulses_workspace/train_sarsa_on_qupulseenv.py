@@ -23,7 +23,7 @@ exp_fun = LinearDecay(0.5, 1e-2, explore_until, label='EPS')
 lr_fun = LinearDecay(1e-1, 5e-3, decay_lr_until, label='LR')
 gamma = 0.9
 
-if 'EPS' in exp_fun.label:
+if 'EPS' in exp_fun.labelself.rew_scale:
     policy = eps_greedy
 else:
     policy = boltzmann

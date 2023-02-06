@@ -5,24 +5,29 @@ from qutip import sigmaz, sigmax, identity, tensor, basis, ptrace
 
 import matplotlib.pyplot as plt
 
-qc = QubitCircuit(N=3)
-qc.add_gate("X", targets=2)
-qc.add_gate("SNOT", targets=0)
-qc.add_gate("SNOT", targets=1)
-qc.add_gate("SNOT", targets=2)
+# qc = QubitCircuit(N=3)
+qc = QubitCircuit(N=1)
+qc.add_gate("X", targets=0)
+# qc.add_gate("SNOT", targets=0)
+# qc.add_gate("SNOT", targets=1)
+# qc.add_gate("SNOT", targets=2)
+#
+# # function f(x)
+# qc.add_gate("CNOT", controls=0, targets=2)
+# qc.add_gate("CNOT", controls=1, targets=2)
+#
+# qc.add_gate("SNOT", targets=0)
+# qc.add_gate("SNOT", targets=1)
 
-# function f(x)
-qc.add_gate("CNOT", controls=0, targets=2)
-qc.add_gate("CNOT", controls=1, targets=2)
-
-qc.add_gate("SNOT", targets=0)
-qc.add_gate("SNOT", targets=1)
-
-processor = SCQubits(num_qubits=3)
+processor = SCQubits(num_qubits=1)
 processor.load_circuit(qc)
 
-processor.plot_pulses(title="Control pulse of SCQubits", figsize=(8, 4), dpi=100)
-plt.show(block=False)
+plt.rcParams['font.size']=20
+processor.plot_pulses(title="Microwave pulse example", figsize=(15, 10), dpi=100, show_axis=False)
+for ax in plt.gcf().axes:
+    ax.set_xlabel('Time')
+    # ax.set_ylabel('Amplitude')
+plt.show(block=True)
 
 # # Without decoherence
 # basis00 = basis([3, 3], [0, 0])

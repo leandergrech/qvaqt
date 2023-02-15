@@ -43,9 +43,10 @@ def eval_agent(eval_env, q: QFuncBaseClass, nb_eps: int, init_func=None, get_obs
 
     # opt_env = deepcopy(eval_env)
 
-    regrets = np.zeros(nb_eps)
+    # regrets = np.zeros(nb_eps)
     ep_lens = np.zeros(nb_eps)
     returns = np.zeros(nb_eps)
+    successes = np.zeros(nb_eps)
 
     actions = q.actions
     for ep in range(nb_eps):
@@ -58,7 +59,7 @@ def eval_agent(eval_env, q: QFuncBaseClass, nb_eps: int, init_func=None, get_obs
         # regret = 0
         while (not d) and t < max_steps:
             a = q.greedy_action(o)
-            otp1, r, d, _ = eval_env.step(actions[a])
+            otp1, r, d, info = eval_env.step(actions[a])
 
             # opt_env.reset(o.copy())
             # _, ropt, *_ = opt_env.step(opt_env.get_optimal_action(o))
@@ -72,12 +73,14 @@ def eval_agent(eval_env, q: QFuncBaseClass, nb_eps: int, init_func=None, get_obs
             terminal_obses = np.vstack([terminal_obses, o])
         ep_lens[ep] = t
         returns[ep] = g
+        successes[ep] = info['success']
         # regrets[ep] = regret
     if get_obses:
         obses = dict(initial=init_obses, terminal=terminal_obses)
-        return dict(obses=obses, returns=returns, ep_lens=ep_lens)#, regrets=regrets)
+        return dict(obses=obses, successes=successes, returns=returns, ep_lens=ep_lens)#, regrets=regrets)
     else:
-        return dict(returns=returns, ep_lens=ep_lens, regrets=regrets)
+        # return dict(returns=returns, ep_lens=ep_lens, regrets=regrets)
+        return dict(successes=successes, returns=returns, ep_lens=ep_lens)
 
 
 def init_label(label):

@@ -32,7 +32,8 @@ def create_training_stats(exp_dir, env, eval_eps=1, qvf_type=QValueFunctionLinea
     qfns = get_q_func_filenames(exp_dir)
 
     rets = defaultdict(list)
-    for qfn in tqdm(qfns[0:len(qfns):5]):
+    # for qfn in tqdm(qfns[0:len(qfns):5]):
+    for qfn in tqdm(qfns):
         q = qvf_type.load(qfn)
         ret = eval_agent(env, q, eval_eps)
         for k, v in ret.items():
@@ -69,8 +70,8 @@ def plot_experiment_training_stats(exp_dir, exp_label):
 
     # xrange = [int(os.path.splitext(item)[0].split('_')[-1]) for item in get_q_func_filenames(exp_dir)]
     # xrange = get_q_func_xrange(get_q_func_filenames(exp_dir))
-    xrange = np.arange(len(ep_lens)) * 10
-    maxx = max(xrange)
+    xrange = np.arange(len(ep_lens)) * 100
+    maxx = int(max(xrange))
 
     fig, axs = plt.subplots(2, gridspec_kw=dict(height_ratios=[3, 3]), figsize=(15, 10))
 
@@ -503,7 +504,7 @@ def plot_weight_evolution(exp_dir, save_dir=None):
         else:
             ax.plot(x, per_action_weights, label=f'w_{i}')
     for ax, a in zip(axs, actions):
-        grid_on(ax, 'x', maxx//10, maxx//50)
+        # grid_on(ax, 'x', maxx//10, maxx//50)
         # grid_on(ax, 'y', 1, 0.2)
         ax.axhline(0.0, ls='-.', lw=2, c='k')
         ax.set_title(np.subtract(a, 1), size=18)
@@ -511,7 +512,7 @@ def plot_weight_evolution(exp_dir, save_dir=None):
         ax.set_ylabel('Weight', size=15)
         ax.legend(loc='best')
 
-    # fig.tight_layout()
+    fig.tight_layout()
     plt.savefig(os.path.join(save_dir, 'tracked_weights.png'))
 
 
@@ -655,12 +656,54 @@ def plot_q_vals_region_sampling_tracking_states(experiment_dir, env, save_dir=No
     plt.show()
 
 
-if __name__ == '__main__':
-    # exp_name = 'qupulseenv_test_020323_182646'
-    exp_name = get_latest_experiment('..', 'qupulseenv_test')
-    exp_pardir = os.path.join(exp_name)
+def load_agent_traning_evals(exp_path):
+    evals_path = os.path.join(exp_path, 'evals')
+    eval_files = [os.path.abspath(os.path.join(evals_path, item)) for item in os.listdir(evals_path)]
 
-    exp_dir = exp_pardir
+    eval_file = eval_files[0]
+    with open(eval_file, 'rb') as f:
+        eval_data = pkl.load(f)
+
+    print([i for i in eval_data.keys()])
+    eval_ep_lens = eval_data['eval_ep_lens']
+    eval_ep_successes = eval_data['eval_ep_success']
+    eval_ep_returns = eval_data['eval_ep_rets']
+    eval_every = eval_data['eval_every']
+
+    nb_evals = eval_ep_lens.shape[0]
+
+    fig, axs = plt.subplots(3)
+    xrange = np.arange(0, nb_evals * eval_every, eval_every)
+
+    ax = axs[0]
+    ave_er = np.mean(eval_ep_returns, axis=1)
+    std_er = np.std(eval_ep_returns, axis=1)
+    ax.fill_between(xrange, ave_er - std_er, ave_er + std_er, alpha=0.4, label='$1\sigma$')
+    ax.plot(xrange, ave_er, ls='dashed', label='Mean')
+    ax.legend(loc='best')
+    ax.set_ylabel('Eval returns')
+
+    ax = axs[1]
+    ave_el = np.mean(eval_ep_lens, axis=1)
+    std_el = np.std(eval_ep_lens, axis=1)
+    ax.fill_between(xrange, ave_el - std_el, ave_el + std_el, alpha=0.4, label='$1\sigma$')
+    ax.plot(xrange, ave_el, ls='dashed', label='Mean')
+    ax.legend(loc='best')
+    ax.set_ylabel('Eval ep. lengths')
+
+    ax = axs[2]
+
+    ax.plot(xrange, eval_ep_successes)
+    ax.set_ylabel('Eval successes')
+
+    for ax in axs:
+        ax.set_xlabel('Training steps')
+
+    plt.show()
+
+
+if __name__ == '__main__':
+    exp_dir = get_latest_experiment('..', 'qupulseenv_sarsa')
 
     qc = QubitCircuit(N=1)
     qc.add_gate('X', targets=0)
@@ -670,10 +713,13 @@ if __name__ == '__main__':
     # train_step = 49
     # plot_episodes(exp_dir=exp_dir, train_step=train_step, env=env, save_dir=exp_dir, nrows=2, ncols=2)
 
+    # # Plot weight evolition during training
     # plot_weight_evolution(exp_dir, save_dir=exp_dir)
+    #
+    # # Create fresh evaluation episodes using saved Q-tables from file during training
+    # create_training_stats(exp_dir, env=env, eval_eps=4)
+    # # Plot the training performance from the new evaluation episodes
+    # plot_experiment_training_stats(exp_dir, 'Linear RL on QuPulseEnv')
 
-    create_training_stats(exp_dir, env=env, eval_eps=10)
-    plot_experiment_training_stats(exp_dir, 'Linear RL on QuPulseEnv')
-
-    # # plot_experiment_all_subs_training_stats(exp_pardir, 'Linear RL')
-    # plot_q_vals_region_sampling_tracking_states(experiment_dir=exp_dir, env=env)
+    # Plot training evaluation stats
+    load_agent_traning_evals(exp_dir)

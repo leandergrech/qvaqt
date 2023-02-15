@@ -2,28 +2,28 @@ import os
 import numpy as np
 from datetime import datetime as dt
 import yaml
-from qutip_qip.circuit import QubitCircuit
 
+from qutip_qip.circuit import QubitCircuit
 from pulses_workspace.utils import LinearDecay, boltzmann, eps_greedy
 from pulses_workspace.rl_envs.qu_pulse_env import QuPulseEnv
 from pulses_workspace.rl_agents.sarsa import train_instance_early_termination
 
-experiment_dir = f"qupulseenv_test_{dt.now().strftime('%m%d%y_%H%M%S')}"
+experiment_dir = f"qupulseenv_sarsa_{dt.now().strftime('%m%d%y_%H%M%S')}"
 
-nb_training_steps = 10000
+nb_training_steps = 1000
 eval_every = 25
-save_every = 25
-eval_eps = 2
-start_eval = 100
+save_every = 50
+eval_eps = 4
+start_eval = 0
 
 explore_until = decay_lr_until = nb_training_steps
 
-exp_fun = LinearDecay(0.5, 1e-2, explore_until, label='EPS')
+exp_fun = LinearDecay(0.1, 1e-2, explore_until, label='EPS')
 # lr_fun = LinearDecay(5e-2, 5e-3, decay_lr_until, label='LR')
-lr_fun = LinearDecay(1e-1, 5e-3, decay_lr_until, label='LR')
+lr_fun = LinearDecay(1e-2, 5e-3, decay_lr_until, label='LR')
 gamma = 0.9
 
-if 'EPS' in exp_fun.labelself.rew_scale:
+if 'EPS' in exp_fun.label:
     policy = eps_greedy
 else:
     policy = boltzmann

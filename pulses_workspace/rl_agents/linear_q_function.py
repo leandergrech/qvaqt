@@ -42,8 +42,8 @@ class QValueFunctionLinear(QFuncBaseClass):
         self.n_act = len(actions[0])
 
         # self.w = np.zeros(self.n_features)
-        # self.w = np.zeros((self.n_discrete_actions, self.n_features))
-        self.w = np.random.normal(0.0, 0.1, size=(self.n_discrete_actions, self.n_features))
+        self.w = np.ones((self.n_discrete_actions, self.n_features))
+        # self.w = np.random.normal(0.0, 0.1, size=(self.n_discrete_actions, self.n_features))
 
         self.nb_updates = 0
 

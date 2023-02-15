@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import warnings
+import pickle as pkl
 from collections import deque
 warnings.filterwarnings(action="ignore", category=DeprecationWarning)
 
@@ -113,6 +114,19 @@ def quick_save(dir, step, q):
     q.save(save_path)
 
 
+def save_evaluations(save_dir, eval_data, start_idx=None, end_idx=None):
+    save_name = f'eval_data'
+    if start_idx is not None and end_idx is not None:
+        save_name += f'_{int(start_idx)}->{int(end_idx)}.pkl'
+
+    save_path = os.path.join(save_dir, save_name)
+    with open(save_path, 'wb') as f:
+        pkl.dump(eval_data, f)
+    print(f'Saved evaluation data to: {save_path}')
+
+    return save_path
+
+
 def train_instance_early_termination(**kwargs):
     """
     REDA training function. Kwargs holds all configurable training parameters and is saved to file
@@ -125,7 +139,7 @@ def train_instance_early_termination(**kwargs):
     env = kwargs.get('env', None)
     eval_env = kwargs.get('eval_env', None)
 
-    # actions = get_discrete_actions(n_act, 3)
+    # actions = get_discrete_actions(len(env.action_space), 3)
     actions = get_reduced_discrete_actions(len(env.action_space), 3)
 
     '''
@@ -156,6 +170,10 @@ def train_instance_early_termination(**kwargs):
     save_path = kwargs.get('save_path')
     save_every = kwargs.get('save_every', 1000)
 
+    eval_ep_success = np.zeros(shape=(int(nb_training_steps/eval_every), eval_eps))
+    eval_ep_lens = np.zeros(shape=(int(nb_training_steps/eval_every), eval_eps))
+    eval_ep_rets = np.zeros(shape=(int(nb_training_steps/eval_every), eval_eps))
+
     '''
     TRAINING LOOP
     '''
@@ -179,7 +197,7 @@ def train_instance_early_termination(**kwargs):
         q.update(o, a, target, lr)
 
         if d:
-            print(f'Success at step {T}')
+            print(f'Episode terminated at step {T}, success={info["success"]}')
             o = env.reset()
             a = policy(o, q, exploration)
         else:
@@ -195,36 +213,53 @@ def train_instance_early_termination(**kwargs):
                       f'EXP: {exploration*100.0:.2f}%'
                       '\n******* RESET WEIGHTS *******\n\n')
 
-            eval_ep_success = []
+            eidx = int(T/eval_every)
 
-            # Run evaluation episodes
-            for ep in range(eval_eps):
-                eo = eval_env.reset()
-                ed = False
-                t = 0
-                while (not ed) and t < 10:
-                    ea = q.greedy_action(eo)
-                    eotp1, er, ed, info = eval_env.step(actions[ea])
-                    eo = eotp1
-                    t+=1
-                eval_ep_success.append(info['success'])
+            # # Run evaluation episodes
+            dat = eval_agent(eval_env=eval_env, q=q, nb_eps=eval_eps)
+            eval_ep_rets[eidx] = dat['returns']
+            eval_ep_lens[eidx] = dat['ep_lens']
+
+            # for ep in range(eval_eps):
+            #     eo = eval_env.reset()
+            #     ed = False
+            #     t = 0
+            #     ret = 0.
+            #     while (not ed) and t < 10:
+            #         ea = q.greedy_action(eo)
+            #         eotp1, er, ed, info = eval_env.step(actions[ea])
+            #         eo = eotp1
+            #         t+=1
+            #         ret += er
+            #     eval_ep_success[eidx][ep] = info['success']
+            #     eval_ep_lens[eidx][ep] = t
+            #     eval_ep_rets[eidx][ep] = ret / t
 
             # Store mean of eval episode successes
-            eval_successes.append(np.mean(eval_ep_success)==1.0)
+            last_ave_success = np.mean(eval_ep_success[eidx])
+            eval_successes.append(last_ave_success)
 
-            if sum(eval_successes) > 0 and eval_every > 100:
-                eval_every = 100
-            else:
-                eval_every = _eval_every
+            # if sum(eval_successes) > 0 and eval_every > 100:
+            #     eval_every = 100
+            # else:
+            #     eval_every = _eval_every
 
-            if eval_successes[-1]:
+            if last_ave_success:
                 quick_save(kwargs.get('save_path'), T, q)
-                # break
+
             if sum(eval_successes) == nb_successes_early_termination:
                 break
 
         if (T + 1) % save_every == 0 or T == 0:
             quick_save(save_path, T, q)
+
+    # Save evaluation data
+    save_dir = os.path.join(save_path, 'evals')
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    eval_data = dict(eval_ep_lens=eval_ep_lens, eval_ep_success=eval_ep_success, eval_ep_rets=eval_ep_rets,
+                     eval_every=eval_every)
+    sp = save_evaluations(save_dir=save_dir, eval_data=eval_data, start_idx=0, end_idx=nb_training_steps)
 
     return T
 

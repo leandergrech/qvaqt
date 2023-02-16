@@ -26,6 +26,7 @@ def get_reduced_discrete_actions(n_act, act_dim=3):
 
 
 class QuPulseEnv(gym.Env):
+    ABS_REW_IMPROVEMENT = 1e-4  # Added to fidelity then scaled by self.rew_scale
     def __init__(self, qc=None, processor_params=None):
         if qc is None:
             qc = QubitCircuit(N=1)
@@ -36,7 +37,7 @@ class QuPulseEnv(gym.Env):
         self.rew_scale = 10.
         self.max_steps = 20
 
-        self.max_obs_scale = 2.
+        self.max_obs_scale = 10.
 
         self.it = 0
 
@@ -53,7 +54,7 @@ class QuPulseEnv(gym.Env):
         self.action_space = gym.spaces.MultiDiscrete(np.repeat(3, self.n_channels * 2))
         # Only amplitudes or duration
         self.observation_space = gym.spaces.Box(np.zeros(self.n_channels, dtype=float),
-                                                np.ones(self.n_channels, dtype=float) * 2)
+                                                np.repeat(np.inf, self.n_channels))
         # # Amplitudes and duration
         # self.observation_space = gym.spaces.Box(np.zeros(self.n_channels * 2, dtype=float),
         #                                         np.ones(self.n_channels * 2, dtype=float) * 2)
@@ -66,8 +67,8 @@ class QuPulseEnv(gym.Env):
         if options is not None:
             init_state = options.get('init_state', init_state)
 
-        self.thresh_r = np.diagonal(np.abs(np.array(self.processor.run_state(self.basis0).states[-1])))[1] * self.rew_scale \
-        +1e-4
+        self.thresh_r = (np.diagonal(np.abs(np.array(self.processor.run_state(self.basis0).states[-1])))[1] + \
+                         self.ABS_REW_IMPROVEMENT) * self.rew_scale
 
         self.current_state = init_state
         self.it = 0
@@ -80,7 +81,7 @@ class QuPulseEnv(gym.Env):
         delta_action = centered_action * self.action_eps
 
         self.current_state += delta_action
-        self.current_state = np.clip(self.current_state, a_min=0., a_max=self.max_obs_scale)
+        self.current_state = np.clip(self.current_state, a_min=self.action_eps, a_max=self.max_obs_scale)
 
         # # Only amplitudes
         # for i in range(self.n_channels):
@@ -142,6 +143,7 @@ def run_an_episode():
     import matplotlib as mpl
     from pulses_workspace.utils import grid_on
     mpl.rcParams['font.size'] = 25
+    from tqdm import trange
 
     qc = QubitCircuit(N=1)
     qc.add_gate('X', targets=0)
@@ -152,10 +154,11 @@ def run_an_episode():
 
     env = QuPulseEnv(qc=qc, processor_params=processor_params)
     print(repr(env))
-    env.action_eps = 1e-2
+    env.action_eps = 3e-1
     env.rew_scale = 1.
-    env.max_steps = 38
-    ch = 'sx0'
+    env.max_steps = 80
+    env.max_obs_scale = 5.
+    ch = 'all'
 
     # o = env.reset(options=dict(init_state=[1, 0, 0]))
     o = env.reset()
@@ -165,23 +168,27 @@ def run_an_episode():
     acts = []
     rews = []
 
-    while not d:
+    for _ in trange(env.max_steps):
         if env.it < 3:   # Do nothing
             a = [1, 1, 1]
-        elif env.it < 10:   # Bump down to min limit
+        elif env.it < 25:   # Bump down to min limit
             if ch == 'sx0':
                 a = [0, 1, 1]   # sx0
             elif ch == 'sz0':
                 a = [1, 0, 1]   # sz0
             elif ch == 'sy0':
                 a = [1, 1, 0]   # sy0
-        elif env.it >= 15:  # Bump up to max limit
+            elif ch == 'all':
+                a = [0, 0, 0]   # all
+        elif env.it >= 40:  # Bump up to max limit
             if ch == 'sx0':
                 a = [2, 1, 1]   # sx0
             elif ch == 'sz0':
                 a = [1, 2, 1]   # sz0
             elif ch == 'sy0':
                 a = [1, 1, 2]   # sy0
+            elif ch == 'all':
+                a = [2, 2, 2]   # all
         # a = env.action_space.sample()
         otp1, r, d, info = env.step(a)
 
